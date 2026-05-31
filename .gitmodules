@@ -1,5 +1,5 @@
 [submodule "Capes"]
-	path = Alex
+	path = Alexandre
 	url = git@github.com:Alexandre-Fernandez-dev/Capes.git
 [submodule "CAPES_2026"]
 	path = Roxane
