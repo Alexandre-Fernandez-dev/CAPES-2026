@@ -31,7 +31,7 @@ Pour déposer des fichiers (PDFs, documents Word, etc.) :
 
 1. Crée un compte GitHub si tu n'en as pas : [github.com](https://github.com)
 2. Demande l'accès à Alexandre pour être ajouté au dépôt
-3. Ouvre le dossier [`Others/`](./Others/)
+3. Ouvre le dossier [`Others/`](https://github.com/Alexandre-Fernandez-dev/CAPES-2026/tree/main/Others)
 4. Clique sur **"Add file" → "Upload files"**
 5. Dépose ton fichier et clique sur **"Commit changes"**
 

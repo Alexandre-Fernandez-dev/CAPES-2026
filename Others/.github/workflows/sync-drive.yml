@@ -1,0 +1,81 @@
+name: Sync Google Drive → Others/
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"  # toutes les 6 heures
+  workflow_dispatch:        # déclenchement manuel possible
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install google-api-python-client google-auth
+
+      - name: Sync Drive → Others/
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          python - <<'EOF'
+          import os, json, io
+          from google.oauth2 import service_account
+          from googleapiclient.discovery import build
+          from googleapiclient.http import MediaIoBaseDownload
+
+          FOLDER_ID = "1u7Lltb7bPd4AmuXNKIG5wGr2oIuaNiOW"
+          DEST = "Others"
+          os.makedirs(DEST, exist_ok=True)
+
+          creds_info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
+          creds = service_account.Credentials.from_service_account_info(
+              creds_info, scopes=["https://www.googleapis.com/auth/drive.readonly"]
+          )
+          service = build("drive", "v3", credentials=creds)
+
+          # Lister les fichiers du dossier (hors dossiers)
+          results = service.files().list(
+              q=f"'{FOLDER_ID}' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false",
+              fields="files(id, name, mimeType)"
+          ).execute()
+
+          files = results.get("files", [])
+          print(f"{len(files)} fichier(s) trouvé(s) dans le Drive.")
+
+          for file in files:
+              name = file["name"]
+              fid  = file["id"]
+              mime = file["mimeType"]
+              dest_path = os.path.join(DEST, name)
+
+              # Exporter les fichiers Google natifs en PDF
+              if mime.startswith("application/vnd.google-apps"):
+                  export_mime = "application/pdf"
+                  dest_path = dest_path + ".pdf" if not dest_path.endswith(".pdf") else dest_path
+                  request = service.files().export_media(fileId=fid, mimeType=export_mime)
+              else:
+                  request = service.files().get_media(fileId=fid)
+
+              with io.FileIO(dest_path, "wb") as f:
+                  downloader = MediaIoBaseDownload(f, request)
+                  done = False
+                  while not done:
+                      _, done = downloader.next_chunk()
+              print(f"✅ {name}")
+          EOF
+
+      - name: Commit & push si changements
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Others/
+          git diff --cached --quiet || git commit -m "sync: mise à jour Others/ depuis Google Drive"
+          git push
