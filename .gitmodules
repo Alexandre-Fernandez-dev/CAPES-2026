@@ -1,0 +1,6 @@
+[submodule "Capes"]
+	path = Alex
+	url = git@github.com:Alexandre-Fernandez-dev/Capes.git
+[submodule "CAPES_2026"]
+	path = Roxane
+	url = git@github.com:Roxaneparis7/CAPES_2026.git
