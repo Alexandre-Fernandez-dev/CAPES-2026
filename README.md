@@ -12,7 +12,7 @@ Clique, écris, c'est sauvegardé. Pas besoin de compte.
 ### 📁 Déposer des fichiers → Google Drive
 > 🔗 **[Ouvrir le Google Drive CAPES-2026](https://drive.google.com/drive/folders/1u7Lltb7bPd4AmuXNKIG5wGr2oIuaNiOW)**
 
-Dépose tes PDFs, docs, etc. Les fichiers sont synchronisés automatiquement ici toutes les 6h.
+Dépose tes PDFs, docs, etc. Les fichiers sont synchronisés dans le sous-dossiers "Others" automatiquement ici toutes les 6h.
 
 ---
 
