@@ -1,0 +1,67 @@
+name: Convert ODT to PDF
+
+on:
+  push:
+    paths:
+      - '**.odt'   # Se déclenche uniquement si un .odt est modifié
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Nécessaire pour pousser les PDFs générés
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Permet de comparer avec le commit précédent
+
+      - name: Installer LibreOffice
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libreoffice --no-install-recommends
+
+      - name: Récupérer les fichiers ODT modifiés
+        id: changed_files
+        run: |
+          # Liste les fichiers .odt ajoutés ou modifiés dans ce push
+          CHANGED=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '*.odt')
+          echo "Fichiers modifiés :"
+          echo "$CHANGED"
+
+          # Encode la liste en une seule ligne séparée par des espaces pour la passer en output
+          CHANGED_ONELINE=$(echo "$CHANGED" | tr '\n' ' ' | sed 's/ $//')
+          echo "files=$CHANGED_ONELINE" >> "$GITHUB_OUTPUT"
+
+      - name: Convertir les ODT en PDF
+        if: steps.changed_files.outputs.files != ''
+        run: |
+          # Dossier de destination des PDFs (modifiable)
+          PDF_DIR="pdf_output"
+          mkdir -p "$PDF_DIR"
+
+          for ODT_FILE in ${{ steps.changed_files.outputs.files }}; do
+            echo "Conversion de : $ODT_FILE"
+
+            # Reproduire l'arborescence dans pdf_output/
+            RELATIVE_DIR=$(dirname "$ODT_FILE")
+            TARGET_DIR="$PDF_DIR/$RELATIVE_DIR"
+            mkdir -p "$TARGET_DIR"
+
+            # Convertir avec LibreOffice en headless
+            libreoffice --headless --convert-to pdf "$ODT_FILE" --outdir "$TARGET_DIR"
+
+            echo "  → $TARGET_DIR/$(basename "${ODT_FILE%.odt}.pdf")"
+          done
+
+      - name: Commit et push des PDFs
+        if: steps.changed_files.outputs.files != ''
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add pdf_output/
+          git diff --cached --quiet || git commit -m "ci: conversion ODT → PDF [skip ci]"
+          git push
