@@ -47,3 +47,4 @@ jobs:
           git add Alexandre/
           git diff --cached --quiet || git commit -m "ci: sync PDFs Alexandre [skip ci]"
           git push
+
