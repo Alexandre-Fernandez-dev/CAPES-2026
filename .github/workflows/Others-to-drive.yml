@@ -1,11 +1,11 @@
-name: Sync Others → Google Drive
+name: Sync Others/ → Google Drive
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'Others/**'   # Se déclenche uniquement si Others/ change
+      - 'Others/**'
   workflow_dispatch:
 
 jobs:
@@ -16,99 +16,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - name: Installer rclone
+        run: |
+          curl https://rclone.org/install.sh | sudo bash
 
-      - name: Install dependencies
-        run: pip install google-api-python-client google-auth
+      - name: Configurer rclone
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "${{ secrets.RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
 
       - name: Sync Others/ → Drive
-        env:
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
         run: |
-          python - <<'EOF'
-          import os, json, mimetypes
-          from pathlib import Path
-          from google.oauth2 import service_account
-          from googleapiclient.discovery import build
-          from googleapiclient.http import MediaFileUpload
-
-          FOLDER_ID = "1u7Lltb7bPd4AmuXNKIG5wGr2oIuaNiOW"
-          SRC = "Others"
-
-          creds_info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
-          creds = service_account.Credentials.from_service_account_info(
-              creds_info,
-              scopes=["https://www.googleapis.com/auth/drive"]  # scope écriture
-          )
-          service = build("drive", "v3", credentials=creds)
-
-          def get_or_create_folder(name, parent_id):
-              """Retourne l'ID d'un sous-dossier Drive, le crée si absent."""
-              results = service.files().list(
-                  q=f"'{parent_id}' in parents and name='{name}' and mimeType='application/vnd.google-apps.folder' and trashed=false",
-                  fields="files(id, name)"
-              ).execute()
-              folders = results.get("files", [])
-              if folders:
-                  return folders[0]["id"]
-              folder = service.files().create(
-                  body={"name": name, "mimeType": "application/vnd.google-apps.folder", "parents": [parent_id]},
-                  fields="id"
-              ).execute()
-              print(f"📁 Dossier créé : {name}")
-              return folder["id"]
-
-          def get_existing_file(name, parent_id):
-              """Retourne l'ID d'un fichier existant dans un dossier Drive, ou None."""
-              results = service.files().list(
-                  q=f"'{parent_id}' in parents and name='{name}' and trashed=false",
-                  fields="files(id, name)"
-              ).execute()
-              files = results.get("files", [])
-              return files[0]["id"] if files else None
-
-          def upload_file(local_path, parent_id):
-              """Upload ou met à jour un fichier dans Drive."""
-              name = local_path.name
-              mime = mimetypes.guess_type(str(local_path))[0] or "application/octet-stream"
-              media = MediaFileUpload(str(local_path), mimetype=mime, resumable=True)
-
-              existing_id = get_existing_file(name, parent_id)
-              if existing_id:
-                  # Mise à jour du fichier existant
-                  service.files().update(
-                      fileId=existing_id,
-                      media_body=media
-                  ).execute()
-                  print(f"🔄 Mis à jour : {local_path}")
-              else:
-                  # Nouveau fichier
-                  service.files().create(
-                      body={"name": name, "parents": [parent_id]},
-                      media_body=media,
-                      fields="id"
-                  ).execute()
-                  print(f"✅ Uploadé    : {local_path}")
-
-          # Parcourir Others/ en préservant l'arborescence dans Drive
-          for local_file in sorted(Path(SRC).rglob("*")):
-              if not local_file.is_file():
-                  continue
-              if local_file.name.startswith("."):
-                  continue  # ignorer .checksums etc.
-
-              # Reconstruire le chemin de dossiers dans Drive
-              relative = local_file.relative_to(SRC)
-              parts = relative.parts[:-1]  # dossiers intermédiaires sans le fichier
-
-              current_parent = FOLDER_ID
-              for part in parts:
-                  current_parent = get_or_create_folder(part, current_parent)
-
-              upload_file(local_file, current_parent)
-
-          print("🎉 Synchronisation terminée.")
-          EOF
+          rclone sync Others/ gdrive-capes: \
+            --transfers 4 \
+            --checkers 8 \
+            --drive-chunk-size 32M \
+            --log-level INFO
