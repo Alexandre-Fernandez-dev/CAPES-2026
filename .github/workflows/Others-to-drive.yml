@@ -17,13 +17,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Installer rclone
-        run: |
-          curl https://rclone.org/install.sh | sudo bash
+        run: curl https://rclone.org/install.sh | sudo bash
 
       - name: Configurer rclone
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
         run: |
           mkdir -p ~/.config/rclone
-          echo "${{ secrets.RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
+          printf '%s' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
 
       - name: Sync Others/ → Drive
         run: |
