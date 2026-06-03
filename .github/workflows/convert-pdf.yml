@@ -5,6 +5,13 @@ on:
     paths:
       - '**.odt'   # Se déclenche uniquement si un .odt est modifié
 
+  workflow_dispatch:
+    inputs:
+      convert_all:
+        description: 'Convertir tous les ODT du dépôt (pas seulement les modifiés)'
+        type: boolean
+        default: false
+
 jobs:
   convert:
     runs-on: ubuntu-latest
@@ -23,17 +30,19 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y libreoffice --no-install-recommends
 
-      - name: Récupérer les fichiers ODT modifiés
+      - name: Récupérer les fichiers ODT à convertir
         id: changed_files
         run: |
-          # Liste les fichiers .odt ajoutés ou modifiés dans ce push
-          CHANGED=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '*.odt')
-          echo "Fichiers modifiés :"
-          echo "$CHANGED"
+          if [ "${{ inputs.convert_all }}" = "true" ]; then
+            echo "Mode : tous les fichiers ODT du dépôt"
+            FILES=$(find . -name '*.odt' -not -path './.git/*' | sed 's|^\./||' | tr '\n' ' ' | sed 's/ $//')
+          else
+            echo "Mode : fichiers ODT modifiés uniquement"
+            FILES=$(git diff --name-only --diff-filter=AM HEAD~1 HEAD -- '*.odt' | tr '\n' ' ' | sed 's/ $//')
+          fi
 
-          # Encode la liste en une seule ligne séparée par des espaces pour la passer en output
-          CHANGED_ONELINE=$(echo "$CHANGED" | tr '\n' ' ' | sed 's/ $//')
-          echo "files=$CHANGED_ONELINE" >> "$GITHUB_OUTPUT"
+          echo "Fichiers à traiter : $FILES"
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
 
       - name: Convertir les ODT en PDF
         if: steps.changed_files.outputs.files != ''
