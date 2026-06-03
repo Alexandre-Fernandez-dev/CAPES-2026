@@ -1,0 +1,33 @@
+name: Sync sous-modules
+ 
+on:
+  schedule:
+    - cron: '*/15 * * * *'  # Toutes les 15 minutes
+  workflow_dispatch:
+ 
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+ 
+    steps:
+      - name: Checkout avec sous-modules
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+ 
+      - name: Mettre à jour tous les sous-modules
+        run: git submodule update --remote --merge
+ 
+      - name: Commit et push si des sous-modules ont avancé
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+ 
+          git add .
+          git diff --cached --quiet || git commit -m "ci: sync sous-modules [skip ci]"
+          git push
+ 
