@@ -37,7 +37,7 @@ jobs:
 
           creds_info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
           creds = service_account.Credentials.from_service_account_info(
-              creds_info, scopes=["https://www.googleapis.com/auth/drive.readonly"]
+              creds_info, scopes=["https://www.googleapis.com/auth/drive"]
           )
           service = build("drive", "v3", credentials=creds)
 
