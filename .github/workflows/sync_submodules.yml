@@ -3,8 +3,7 @@ name: Sync PDFs depuis sous-module Alexandre
 on:
   repository_dispatch:
     types: [submodule-pdf-updated]
-
-  workflow_dispatch:   # Pour lancer manuellement si besoin
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -27,18 +26,15 @@ jobs:
       - name: Copier les PDFs vers Others/Alexandre
         run: |
           DEST="Others/Alexandre"
+          SRC="Alexandre/pdf_output"
           mkdir -p "$DEST"
 
-          # Chemin vers le pdf_output du sous-module (à adapter si le sous-module est dans un sous-dossier)
-          SRC="Alexandre/pdf_output"   #
-
-          if [ ! -d "$SRC" ]; then
-            echo "Dossier source introuvable : $SRC"
-            exit 1
-          fi
-
-          # Copie en préservant l'arborescence
-          rsync -av --include='*.pdf' --exclude='*' "$SRC/" "$DEST/"
+          rsync -av \
+            --include='*/' \
+            --include='*.pdf' \
+            --exclude='*' \
+            --prune-empty-dirs \
+            "$SRC/" "$DEST/"
 
           echo "PDFs copiés depuis $SRC vers $DEST"
 
@@ -48,6 +44,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add Others/Alexandre/
-          git add Alexandre/   # Met à jour le pointeur du submodule
+          git add Alexandre/
           git diff --cached --quiet || git commit -m "ci: sync PDFs Alexandre [skip ci]"
           git push
